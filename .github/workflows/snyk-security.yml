@@ -1,0 +1,38 @@
+name: Snyk Security
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  snyk:
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Snyk CLI to check for security issues
+        uses: snyk/actions/setup@v1
+        env:
+          SNYK_TOKEN: a1eb8b76-9f7f-4ff8-8fcb-e951abcdfa23
+
+      - name: Run Snyk Code test with fail on High or Critical
+        id: snyk_code_test
+        run: |
+          snyk code test --fail-on=high --sarif-file-output=snyk-code.sarif
+        env:
+          SNYK_TOKEN: a1eb8b76-9f7f-4ff8-8fcb-e951abcdfa23
+
+      - name: Upload SARIF results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-code.sarif
