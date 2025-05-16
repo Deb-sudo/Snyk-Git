@@ -1,4 +1,4 @@
-name: Snyk Security
+name: Snyk Code SAST Scan
 
 on:
   push:
@@ -8,31 +8,39 @@ on:
 
 permissions:
   contents: read
+  security-events: write
+  actions: read
 
 jobs:
-  snyk:
+  snyk-sast:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
       actions: read
-    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Snyk CLI to check for security issues
-        uses: snyk/actions/setup@v1
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
         env:
           SNYK_TOKEN: a1eb8b76-9f7f-4ff8-8fcb-e951abcdfa23
 
-      - name: Run Snyk Code test with fail on High or Critical
-        id: snyk_code_test
+      - name: Run Snyk Code SAST Scan
+        id: snyk-code
         run: |
           snyk code test --fail-on=high --sarif-file-output=snyk-code.sarif
         env:
           SNYK_TOKEN: a1eb8b76-9f7f-4ff8-8fcb-e951abcdfa23
+        continue-on-error: true  # Ensure SARIF is generated even on failure
 
-      - name: Upload SARIF results to GitHub Code Scanning
+      - name: Upload SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-code.sarif
+
+      - name: Fail pipeline if high/critical vulnerabilities are found
+        if: steps.snyk-code.outcome == 'failure'
+        run: exit 1
